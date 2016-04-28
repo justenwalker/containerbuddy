@@ -86,6 +86,7 @@ func LoadApp() (*App, error) {
 // NewApp creates a new App from the config
 func NewApp(configFlag string) (*App, error) {
 	a := EmptyApp()
+	a.ConfigFlag = configFlag
 	cfg, err := config.ParseConfig(configFlag)
 	if err != nil {
 		return nil, err
