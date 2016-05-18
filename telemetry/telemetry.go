@@ -65,6 +65,12 @@ func NewTelemetry(raw interface{}) (*Telemetry, error) {
 	return t, nil
 }
 
+func (t *Telemetry) isListening() bool {
+	t.lock.RLock()
+	defer t.lock.RUnlock()
+	return t.listening
+}
+
 // Serve starts serving the telemetry service
 func (t *Telemetry) Serve() {
 	t.lock.Lock()
@@ -81,7 +87,16 @@ func (t *Telemetry) Serve() {
 	t.listening = true
 	go func() {
 		log.Debugf("telemetry: Listening on %s", t.addr.String())
-		log.Fatal(http.Serve(t.listen, t.mux))
+		err := http.Serve(t.listen, t.mux)
+		if !t.isListening() {
+			// When Shutdown closes the underlying TCP listener, http.Serve will
+			// throw an error: accept tcp xx.xx.xx.xx:9090: use of closed network connection
+			// This is expected, so we can ignore it.
+			err = nil
+		}
+		if err != nil {
+			log.Fatalf("telemetry: FATAL error in telemetry HTTP server: %v", err)
+		}
 		log.Debugf("telemetry: Stopped listening on %s", t.addr.String())
 	}()
 }
@@ -92,11 +107,11 @@ func (t *Telemetry) Shutdown() {
 	defer t.lock.Unlock()
 	log.Debugf("telemetry: Shutdown listener %s", t.listen.Addr().String())
 	if t.listening {
+		t.listening = false
 		if err := t.listen.Close(); err != nil {
 			log.Errorf("telemetry: listener shutdown failed: %v", err)
 			return
 		}
-		t.listening = false
 		t.listen = nil
 	}
 }
