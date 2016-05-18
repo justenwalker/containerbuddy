@@ -73,12 +73,12 @@ func (t *Telemetry) isListening() bool {
 
 // Serve starts serving the telemetry service
 func (t *Telemetry) Serve() {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	if t.listening {
+	if t.isListening() {
 		log.Debugf("telemetry: Already listening on %s", t.addr.String())
 		return
 	}
+	t.lock.Lock()
+	defer t.lock.Unlock()
 	ln, err := net.Listen(t.addr.Network(), t.addr.String())
 	if err != nil {
 		log.Fatalf("FATAL Error serving telemetry on %s: %v", t.addr.String(), err)
