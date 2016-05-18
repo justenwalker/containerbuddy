@@ -219,6 +219,10 @@ func deregisterService(service *services.Service) {
 func (a *App) Reload() error {
 	a.signalLock.Lock()
 	defer a.signalLock.Unlock()
+	if a.ConfigFlag == "" {
+		log.Warnf("No config to reload")
+		return nil
+	}
 	log.Infof("Reloading configuration.")
 
 	newApp, err := NewApp(a.ConfigFlag)
