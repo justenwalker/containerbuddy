@@ -81,11 +81,15 @@ func (t *Telemetry) Serve() {
 	}
 	ln, err := net.Listen(t.addr.Network(), t.addr.String())
 	if err != nil {
-		log.Errorf("Error serving telemetry on %s: %v", t.addr.String(), err)
+		log.Fatalf("FATAL Error serving telemetry on %s: %v", t.addr.String(), err)
 	}
 	t.listen = ln
 	t.listening = true
 	go func() {
+		if !t.isListening() {
+			log.Debugf("telemetry: Is not listening")
+			return
+		}
 		log.Debugf("telemetry: Listening on %s", t.addr.String())
 		err := http.Serve(t.listen, t.mux)
 		if !t.isListening() {
@@ -105,8 +109,8 @@ func (t *Telemetry) Serve() {
 func (t *Telemetry) Shutdown() {
 	t.lock.Lock()
 	defer t.lock.Unlock()
-	log.Debugf("telemetry: Shutdown listener %s", t.listen.Addr().String())
 	if t.listening {
+		log.Debugf("telemetry: Shutdown listener %s", t.listen.Addr().String())
 		t.listening = false
 		if err := t.listen.Close(); err != nil {
 			log.Errorf("telemetry: listener shutdown failed: %v", err)
