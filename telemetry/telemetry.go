@@ -89,8 +89,12 @@ func (t *Telemetry) Serve() {
 func (t *Telemetry) Shutdown() {
 	t.lock.Lock()
 	defer t.lock.Unlock()
+	log.Debugf("telemetry: Shutdown listener %s\n", t.listen.Addr().String())
 	if t.listening {
-		t.listen.Close()
+		if err := t.listen.Close(); err != nil {
+			log.Errorf("telemetry: listener shutdown failed: %v", err)
+			return
+		}
 		t.listening = false
 	}
 }
