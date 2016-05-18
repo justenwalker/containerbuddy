@@ -97,5 +97,6 @@ func (t *Telemetry) Shutdown() {
 			return
 		}
 		t.listening = false
+		t.listen = nil
 	}
 }
