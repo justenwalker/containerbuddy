@@ -40,7 +40,7 @@ func TestSighupDeadlock(args []string) bool {
 	}
 
 	// Wait for TTL to expire
-	time.Sleep(6 * time.Second)
+	time.Sleep(120 * time.Second)
 
 	// Wait for app to be healthy
 	if err = consul.WaitForServices("app", "", 1); err != nil {

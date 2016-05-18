@@ -71,37 +71,42 @@ func (t *Telemetry) isListening() bool {
 	return t.listening
 }
 
-// Serve starts serving the telemetry service
-func (t *Telemetry) Serve() {
-	if t.isListening() {
+func (t *Telemetry) startListener() {
+	t.lock.Lock()
+	if t.listen != nil {
 		log.Debugf("telemetry: Already listening on %s", t.addr.String())
+		t.lock.Unlock()
 		return
 	}
-	t.lock.Lock()
-	defer t.lock.Unlock()
 	ln, err := net.Listen(t.addr.Network(), t.addr.String())
 	if err != nil {
 		log.Fatalf("FATAL Error serving telemetry on %s: %v", t.addr.String(), err)
 	}
 	t.listen = ln
 	t.listening = true
+	log.Debugf("telemetry: Listening on %s", t.addr.String())
+	t.lock.Unlock()
+	err = http.Serve(t.listen, t.mux)
+	if !t.isListening() {
+		// When Shutdown closes the underlying TCP listener, http.Serve will
+		// throw an error: accept tcp xx.xx.xx.xx:9090: use of closed network connection
+		// This is expected, so we can ignore it.
+		err = nil
+	}
+	if err != nil {
+		log.Fatalf("telemetry: FATAL error in telemetry HTTP server: %v", err)
+	}
+	log.Debugf("telemetry: Stopped listening on %s", t.addr.String())
+}
+
+// Serve starts serving the telemetry service
+func (t *Telemetry) Serve() {
+	if t.listening {
+		log.Debugf("telemetry: Already listening on %s", t.addr.String())
+		return
+	}
 	go func() {
-		if !t.isListening() {
-			log.Debugf("telemetry: Is not listening")
-			return
-		}
-		log.Debugf("telemetry: Listening on %s", t.addr.String())
-		err := http.Serve(t.listen, t.mux)
-		if !t.isListening() {
-			// When Shutdown closes the underlying TCP listener, http.Serve will
-			// throw an error: accept tcp xx.xx.xx.xx:9090: use of closed network connection
-			// This is expected, so we can ignore it.
-			err = nil
-		}
-		if err != nil {
-			log.Fatalf("telemetry: FATAL error in telemetry HTTP server: %v", err)
-		}
-		log.Debugf("telemetry: Stopped listening on %s", t.addr.String())
+		t.startListener()
 	}()
 }
 
